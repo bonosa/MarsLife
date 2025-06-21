@@ -66,14 +66,16 @@ io.on('connection', (socket) => {
     try {
       const imageUrl = await generateHabitatVisual(data.preferences);
       if (!imageUrl) throw new Error("Image generation failed.");
+      
+      const habitatDesign = generateHabitatDesign(data.preferences);
+      habitatDesign.imageUrl = imageUrl;
 
       const newCredits = currentCredits - GENERATION_COST;
       userCredits.set(socket.id, newCredits);
       socket.emit('credit_update', { credits: newCredits });
 
       socket.emit('habitat_design', {
-        imageUrl: imageUrl,
-        preferences: data.preferences,
+        design: habitatDesign,
         environment: marsEnvironment,
         timestamp: new Date().toISOString()
       });
@@ -88,6 +90,27 @@ io.on('connection', (socket) => {
     console.log('A colonist has disconnected.');
   });
 });
+
+function generateHabitatDesign(preferences) {
+    const { style, capacity, budget } = preferences;
+    const template = habitatTemplates.find(t => t.name === style) || habitatTemplates[0];
+
+    const specifications = {
+        totalArea: (parseInt(capacity) || 4) * 28,
+        powerConsumption: (parseInt(capacity) || 4) * 2.2,
+        oxygenProduction: `${((parseInt(capacity) || 4) * 0.83).toFixed(2)}`,
+        waterRecycling: `${((parseInt(capacity) || 4) * 3.8).toFixed(2)}`,
+        radiationShielding: '98.5% effective'
+    };
+
+    return {
+        template: template,
+        specifications: specifications,
+        estimatedCost: (parseInt(capacity) || 4) * 1.2 * (budget === 'High' ? 2 : 1),
+        buildTime: Math.ceil((parseInt(capacity) || 4) * 1.5),
+        safetyRating: Math.floor(Math.random() * (98 - 85 + 1) + 85)
+    };
+}
 
 // --- AI Image Generation ---
 async function generateHabitatVisual(preferences) {
