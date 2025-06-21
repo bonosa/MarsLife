@@ -3,11 +3,14 @@ class MarsHabitatDesigner {
     constructor() {
         this.socket = io();
         this.selectedTemplate = "The Martian Dome";
+        this.maxGenerations = 4;
+        this.generationCount = parseInt(localStorage.getItem('marslifeGenerationCount') || '0');
         this.currentDesign = null;
         
         this.initializeElements();
         this.setupEventListeners();
         this.setupSocketListeners();
+        this.updateGenerationUI();
     }
 
     initializeElements() {
@@ -33,13 +36,14 @@ class MarsHabitatDesigner {
         this.elements.generateButton.addEventListener('click', () => this.generateHabitat());
         this.elements.musicToggleBtn.addEventListener('click', () => this.toggleMusic());
         
-        document.querySelector('.share-buttons').addEventListener('click', (e) => {
+        // Use event delegation for dynamic buttons
+        this.elements.resultsPanel.addEventListener('click', (e) => {
             if (e.target.classList.contains('share-btn')) {
-                this.shareHabitat(e.target.classList[1]);
+                this.handleAction(e.target.classList[1]);
             }
         });
 
-        // Handle browser autoplay policies
+        // Handle music autoplay on first interaction
         document.body.addEventListener('click', () => this.handleFirstInteraction(), { once: true });
     }
 
@@ -90,6 +94,8 @@ class MarsHabitatDesigner {
     }
 
     generateHabitat() {
+        this.elements.generateButton.disabled = true; // Prevent repeat clicks
+        
         const preferences = {
             style: this.selectedTemplate,
             capacity: this.elements.capacitySelect.value,
@@ -109,10 +115,18 @@ class MarsHabitatDesigner {
         this.updateVisualization(data.design.imageUrl);
         this.updateSpecifications(data.design);
         this.elements.resultsPanel.classList.add('show');
+
+        // Increment count after successful generation
+        this.generationCount++;
+        localStorage.setItem('marslifeGenerationCount', this.generationCount);
+        this.updateGenerationUI();
     }
 
     updateVisualization(imageUrl) {
         this.elements.habitatImage.src = imageUrl;
+        this.elements.imageContainer.classList.remove('is-loading');
+        this.elements.loadingMessage.textContent = 'Welcome to Mars Life';
+        this.updateGenerationUI(); // Re-enable button if limit not reached
     }
 
     updateSpecifications(design) {
@@ -132,7 +146,7 @@ class MarsHabitatDesigner {
             </div>
             <div class="spec-card">
                 <h3>💰 Vitals</h3>
-                <div class="spec-item"><span>Est. Cost:</span> <span>$${(estimatedCost / 1000000).toFixed(1)}M</span></div>
+                <div class="spec-item"><span>Est. Cost:</span> <span>$${(estimatedCost).toFixed(1)}M</span></div>
                 <div class="spec-item"><span>Safety Rating:</span> <span>${safetyRating}%</span></div>
                 <div class="spec-item"><span>Radiation Shield:</span> <span>${specifications.radiationShielding}</span></div>
             </div>
@@ -142,22 +156,23 @@ class MarsHabitatDesigner {
     showError(message) {
         this.elements.imageContainer.classList.remove('is-loading');
         this.elements.loadingMessage.textContent = 'Welcome to Mars Life';
+        this.updateGenerationUI(); // Re-enable button if limit not reached
         alert(`Error: ${message}`);
     }
 
-    shareHabitat(platform) {
+    handleAction(action) {
         if (!this.currentDesign) {
             alert('Design a habitat first!');
             return;
         }
-        
+
         const text = `🚀 I just designed my Mars habitat with AI! It's a "${this.currentDesign.template.name}" concept. Safety: ${this.currentDesign.safetyRating}%. Design yours! #MarsHabitat #AI`;
         const url = encodeURIComponent(window.location.href);
         let shareUrl = '';
         
-        if (platform === 'twitter') {
+        if (action === 'twitter') {
             shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`;
-        } else if (platform === 'reddit') {
+        } else if (action === 'reddit') {
             shareUrl = `https://reddit.com/submit?url=${url}&title=${encodeURIComponent("I designed my Mars Habitat with AI!")}`;
         }
         
@@ -165,7 +180,7 @@ class MarsHabitatDesigner {
             window.open(shareUrl, '_blank');
         }
     }
-
+    
     updateCredits(credits) {
         console.log(`Updating credits: ${credits}`);
         this.elements.creditCount.textContent = credits;
@@ -173,10 +188,21 @@ class MarsHabitatDesigner {
         this.elements.generateButton.disabled = !hasEnoughCredits;
         this.elements.generateButton.textContent = hasEnoughCredits ? '🚀 Generate Mars Habitat' : 'Insufficient Credits';
     }
+    
+    updateGenerationUI() {
+        if (this.generationCount >= this.maxGenerations) {
+            this.elements.generateButton.disabled = true;
+            this.elements.generateButton.textContent = 'Generation Limit Reached';
+        } else {
+            this.elements.generateButton.disabled = false;
+            this.elements.generateButton.textContent = '🚀 Generate Mars Habitat';
+        }
+    }
 
     handleFirstInteraction() {
         if (this.elements.ambientMusic.paused) {
-            this.elements.ambientMusic.play().catch(e => console.warn("Music autoplay was blocked by the browser."));
+            this.elements.ambientMusic.play().catch(e => console.warn("Music autoplay was blocked. Click the music icon."));
+            this.elements.musicToggleBtn.textContent = '🔊';
         }
     }
 
