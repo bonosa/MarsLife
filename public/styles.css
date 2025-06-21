@@ -219,6 +219,34 @@ body {
     line-height: 1.5;
 }
 
+.template-loading {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 2rem;
+    color: #9CA3AF;
+}
+
+.template-loading p {
+    margin-bottom: 1rem;
+    font-size: 1rem;
+}
+
+.refresh-templates-btn {
+    background: rgba(56, 189, 248, 0.1);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 8px;
+    color: #38BDF8;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.refresh-templates-btn:hover {
+    background: rgba(56, 189, 248, 0.2);
+    transform: translateY(-1px);
+}
+
 /* Preferences */
 .pref-group select {
     width: 100%;

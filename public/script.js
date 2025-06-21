@@ -53,6 +53,7 @@ class MarsHabitatDesigner {
             paymentSection: document.getElementById('paymentSection'),
             payButton: document.getElementById('payButton'),
             closeModal: document.querySelector('.close'),
+            refreshTemplatesBtn: document.getElementById('refreshTemplatesBtn'),
         };
         // Start with music off and the correct icon
         this.elements.musicToggleBtn.textContent = '🔇';
@@ -65,6 +66,7 @@ class MarsHabitatDesigner {
         this.elements.buyCreditsBtn.addEventListener('click', () => this.openCreditModal());
         this.elements.closeModal.addEventListener('click', () => this.closeCreditModal());
         this.elements.payButton.addEventListener('click', () => this.processPayment());
+        this.elements.refreshTemplatesBtn.addEventListener('click', () => this.loadTemplates());
         
         // Use event delegation for dynamic buttons
         this.elements.resultsPanel.addEventListener('click', (e) => {
@@ -120,20 +122,41 @@ class MarsHabitatDesigner {
                 this.socket.emit('user_connect', { userId: this.userId });
             }
         }, 2000);
+        
+        // Additional fallback: if templates don't load after 3 seconds, try again
+        setTimeout(() => {
+            if (this.elements.templateGrid.children.length === 0) {
+                console.log("Fallback: Templates not loaded, trying again...");
+                this.loadTemplates();
+            }
+        }, 3000);
     }
 
     loadTemplates() {
         console.log("Requesting templates...");
-        this.socket.emit('get_templates');
+        if (this.socket.connected) {
+            this.socket.emit('get_templates');
+        } else {
+            console.log("Socket not connected, waiting...");
+            setTimeout(() => this.loadTemplates(), 1000);
+        }
     }
 
     renderTemplates(templates) {
         console.log("Rendering templates...");
         if (!templates || templates.length === 0) {
             console.error("No templates to render.");
-            this.elements.templateGrid.innerHTML = '<p>Error loading habitat styles.</p>';
+            this.elements.templateGrid.innerHTML = `
+                <div class="template-loading">
+                    <p>Error loading habitat styles.</p>
+                    <button id="refreshTemplatesBtn" class="refresh-templates-btn">🔄 Refresh Styles</button>
+                </div>
+            `;
+            // Re-attach event listener for the new button
+            document.getElementById('refreshTemplatesBtn').addEventListener('click', () => this.loadTemplates());
             return;
         }
+        
         this.elements.templateGrid.innerHTML = '';
         templates.forEach((template, index) => {
             const card = document.createElement('div');
