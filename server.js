@@ -3,6 +3,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 const OpenAI = require('openai');
 
@@ -21,10 +22,35 @@ const io = socketIo(server, {
   }
 });
 
-// --- Credit System ---
-const userCredits = new Map();
+// --- Credit System with Persistence ---
+const CREDITS_FILE = path.join(__dirname, 'user_credits.json');
 const FREE_CREDITS = 100;
 const GENERATION_COST = 25;
+
+// Load existing credits from file
+function loadCredits() {
+    try {
+        if (fs.existsSync(CREDITS_FILE)) {
+            const data = fs.readFileSync(CREDITS_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (error) {
+        console.error('Error loading credits:', error);
+    }
+    return {};
+}
+
+// Save credits to file
+function saveCredits(credits) {
+    try {
+        fs.writeFileSync(CREDITS_FILE, JSON.stringify(credits, null, 2));
+    } catch (error) {
+        console.error('Error saving credits:', error);
+    }
+}
+
+// Initialize credits storage
+let userCredits = loadCredits();
 
 // --- Static File Serving & Middleware ---
 app.use(cors());
@@ -48,17 +74,32 @@ const marsEnvironment = {
 // --- Socket.IO Logic ---
 io.on('connection', (socket) => {
   console.log('A Mars colonist has connected.');
-  if (!userCredits.has(socket.id)) {
-      userCredits.set(socket.id, FREE_CREDITS);
-  }
-  socket.emit('credit_update', { credits: userCredits.get(socket.id) });
+  
+  // Store user ID mapping
+  let currentUserId = null;
+
+  socket.on('user_connect', (data) => {
+    currentUserId = data.userId;
+    console.log(`User connected with ID: ${currentUserId}`);
+    
+    // Initialize credits for new user or get existing credits
+    if (!userCredits[currentUserId]) {
+        userCredits[currentUserId] = FREE_CREDITS;
+        saveCredits(userCredits);
+    }
+    socket.emit('credit_update', { credits: userCredits[currentUserId] });
+  });
 
   socket.on('get_templates', () => {
     socket.emit('templates_data', habitatTemplates);
   });
 
   socket.on('design_habitat', async (data) => {
-    const currentCredits = userCredits.get(socket.id) || 0;
+    if (!currentUserId) {
+        return socket.emit('error', { message: "User not identified." });
+    }
+    
+    const currentCredits = userCredits[currentUserId] || 0;
     if (currentCredits < GENERATION_COST) {
         return socket.emit('error', { message: "Insufficient credits." });
     }
@@ -71,7 +112,8 @@ io.on('connection', (socket) => {
       habitatDesign.imageUrl = imageUrl;
 
       const newCredits = currentCredits - GENERATION_COST;
-      userCredits.set(socket.id, newCredits);
+      userCredits[currentUserId] = newCredits;
+      saveCredits(userCredits);
       socket.emit('credit_update', { credits: newCredits });
 
       socket.emit('habitat_design', {
@@ -86,7 +128,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    userCredits.delete(socket.id);
+    // Don't delete credits on disconnect - keep them persistent
     console.log('A colonist has disconnected.');
   });
 });

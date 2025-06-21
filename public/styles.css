@@ -336,19 +336,18 @@ body {
 #musicToggleBtn {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #E5E7EB;
-    width: 50px;
-    height: 50px;
+    color: white;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    font-size: 1.5rem;
     cursor: pointer;
-    transition: all 0.2s ease;
+    font-size: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: background 0.2s;
 }
 
 #musicToggleBtn:hover {
     background: rgba(255, 255, 255, 0.2);
-    border-color: #38BDF8;
 } 

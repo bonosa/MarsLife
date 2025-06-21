@@ -7,10 +7,22 @@ class MarsHabitatDesigner {
         this.generationCount = parseInt(localStorage.getItem('marslifeGenerationCount') || '0');
         this.currentDesign = null;
         
+        // Generate or retrieve persistent user ID
+        this.userId = this.getOrCreateUserId();
+        
         this.initializeElements();
         this.setupEventListeners();
         this.setupSocketListeners();
         this.updateGenerationUI();
+    }
+
+    getOrCreateUserId() {
+        let userId = localStorage.getItem('marslifeUserId');
+        if (!userId) {
+            userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('marslifeUserId', userId);
+        }
+        return userId;
     }
 
     initializeElements() {
@@ -50,6 +62,8 @@ class MarsHabitatDesigner {
     setupSocketListeners() {
         this.socket.on('connect', () => {
             console.log("Socket connected! Requesting initial data.");
+            // Send user ID to server for credit tracking
+            this.socket.emit('user_connect', { userId: this.userId });
             this.loadTemplates();
         });
 
