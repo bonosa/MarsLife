@@ -16,16 +16,17 @@ class MarsHabitatDesigner {
             capacitySelect: document.getElementById('capacitySelect'),
             budgetSelect: document.getElementById('budgetSelect'),
             generateButton: document.getElementById('generateButton'),
+            imageContainer: document.getElementById('imageContainer'),
             habitatImage: document.getElementById('habitatImage'),
-            loadingOverlay: document.getElementById('loadingOverlay'),
             loadingMessage: document.getElementById('loadingMessage'),
-            spinner: document.querySelector('.spinner'),
             resultsPanel: document.getElementById('resultsPanel'),
             specsGrid: document.querySelector('.specs-grid'),
             creditCount: document.getElementById('creditCount'),
             musicToggleBtn: document.getElementById('musicToggleBtn'),
             ambientMusic: document.getElementById('ambientMusic'),
         };
+        // Start with music off and the correct icon
+        this.elements.musicToggleBtn.textContent = '🔇';
     }
 
     setupEventListeners() {
@@ -95,13 +96,15 @@ class MarsHabitatDesigner {
             budget: this.elements.budgetSelect.value,
         };
         
+        this.elements.imageContainer.classList.remove('has-image');
+        this.elements.imageContainer.classList.add('is-loading');
         this.elements.loadingMessage.textContent = 'Generating your Mars habitat visual...';
-        this.showLoading(true);
         this.socket.emit('design_habitat', { preferences });
     }
 
     displayHabitat(data) {
-        this.showLoading(false);
+        this.elements.imageContainer.classList.remove('is-loading');
+        this.elements.imageContainer.classList.add('has-image');
         this.currentDesign = data.design;
         this.updateVisualization(data.design.imageUrl);
         this.updateSpecifications(data.design);
@@ -110,7 +113,6 @@ class MarsHabitatDesigner {
 
     updateVisualization(imageUrl) {
         this.elements.habitatImage.src = imageUrl;
-        this.elements.habitatImage.style.display = 'block';
     }
 
     updateSpecifications(design) {
@@ -137,17 +139,9 @@ class MarsHabitatDesigner {
         `;
     }
 
-    showLoading(show) {
-        this.elements.loadingOverlay.style.display = show ? 'flex' : 'none';
-        this.elements.spinner.style.display = show ? 'block' : 'none';
-        if(show) {
-            this.elements.habitatImage.style.display = 'none';
-        }
-    }
-
     showError(message) {
-        this.showLoading(false);
-        this.elements.loadingMessage.textContent = 'Welcome to Mars Life'; // Reset on error
+        this.elements.imageContainer.classList.remove('is-loading');
+        this.elements.loadingMessage.textContent = 'Welcome to Mars Life';
         alert(`Error: ${message}`);
     }
 
