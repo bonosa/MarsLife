@@ -18,6 +18,8 @@ class MarsHabitatDesigner {
             generateButton: document.getElementById('generateButton'),
             habitatImage: document.getElementById('habitatImage'),
             loadingOverlay: document.getElementById('loadingOverlay'),
+            loadingMessage: document.getElementById('loadingMessage'),
+            spinner: document.querySelector('.spinner'),
             resultsPanel: document.getElementById('resultsPanel'),
             specsGrid: document.querySelector('.specs-grid'),
             creditCount: document.getElementById('creditCount'),
@@ -93,6 +95,7 @@ class MarsHabitatDesigner {
             budget: this.elements.budgetSelect.value,
         };
         
+        this.elements.loadingMessage.textContent = 'Generating your Mars habitat visual...';
         this.showLoading(true);
         this.socket.emit('design_habitat', { preferences });
     }
@@ -135,7 +138,8 @@ class MarsHabitatDesigner {
     }
 
     showLoading(show) {
-        this.elements.loadingOverlay.classList.toggle('show', show);
+        this.elements.loadingOverlay.style.display = show ? 'flex' : 'none';
+        this.elements.spinner.style.display = show ? 'block' : 'none';
         if(show) {
             this.elements.habitatImage.style.display = 'none';
         }
@@ -143,6 +147,7 @@ class MarsHabitatDesigner {
 
     showError(message) {
         this.showLoading(false);
+        this.elements.loadingMessage.textContent = 'Welcome to Mars Life'; // Reset on error
         alert(`Error: ${message}`);
     }
 
@@ -187,7 +192,7 @@ class MarsHabitatDesigner {
             this.elements.musicToggleBtn.textContent = '🔊';
         } else {
             this.elements.ambientMusic.pause();
-            this.elements.musicToggleBtn.textContent = '��';
+            this.elements.musicToggleBtn.textContent = '🔇';
         }
     }
 }
