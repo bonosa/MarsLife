@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Mars Habitat Designer - Build Your Perfect Mars Home</title>
+    <link href="styles.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div class="music-control">
+        <audio id="ambientMusic" src="/music/space-ambient.mp3" loop></audio>
+        <button id="musicToggleBtn">🔊</button>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="title">🚀 Mars Habitat Designer</h1>
+            <p class="subtitle">AI-Powered Design Your Perfect Mars Home</p>
+            <div class="mars-stats">
+                <div class="stat">
+                    <span class="stat-value">-63°C</span>
+                    <span class="stat-label">Average Temp</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">38%</span>
+                    <span class="stat-label">Earth Gravity</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">High</span>
+                    <span class="stat-label">Radiation</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Credit Balance -->
+        <div class="credit-balance-container">
+            <div class="credit-balance">
+                <span>🚀 Credits: <span id="creditCount">100</span></span>
+                <span class="generation-cost">25 Credits per Generation</span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Design Panel -->
+            <div class="design-panel">
+                <h2>🏠 Design Your Habitat</h2>
+                
+                <div class="section">
+                    <h3>Choose Your Style</h3>
+                    <div class="template-grid" id="templateGrid">
+                        <!-- Templates will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>Your Preferences</h3>
+                    <div class="preferences">
+                        <div class="pref-group">
+                            <label>Colonist Capacity:</label>
+                            <select id="capacitySelect">
+                                <option value="2">2 People</option>
+                                <option value="4" selected>4 People</option>
+                                <option value="8">8 People</option>
+                                <option value="12">12 People</option>
+                            </select>
+                        </div>
+                        
+                        <div class="pref-group">
+                            <label>Budget Level:</label>
+                            <select id="budgetSelect">
+                                <option value="Low">Low Budget</option>
+                                <option value="Medium" selected>Medium Budget</option>
+                                <option value="High">High Budget</option>
+                                <option value="Very High">Very High</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="generateButton" class="generate-button">
+                    🚀 Generate Mars Habitat
+                </button>
+            </div>
+
+            <!-- Visualization Panel -->
+            <div class="visualization-panel">
+                <h2>🎨 AI-Generated Visualization</h2>
+                <div class="image-container" id="imageContainer">
+                    <img id="habitatImage" src="" alt="AI-generated habitat visualization" style="display: none;">
+                    <div class="canvas-overlay" id="loadingOverlay">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Generating your Mars habitat visual...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Panel -->
+        <div class="results-panel" id="resultsPanel">
+            <h2>📊 Habitat Specifications</h2>
+            <div class="specs-grid">
+                <!-- Spec cards will be populated by JavaScript -->
+            </div>
+            
+            <div class="share-section">
+                <h3>Share Your Mars Home</h3>
+                <div class="share-buttons">
+                    <button class="share-btn twitter">🐦 Twitter</button>
+                    <button class="share-btn reddit">🤖 Reddit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
