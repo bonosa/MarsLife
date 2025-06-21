@@ -7,6 +7,7 @@
     <link href="styles.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
     <div class="music-control">
@@ -41,6 +42,7 @@
             <div class="credit-balance">
                 <span>🚀 Credits: <span id="creditCount">100</span></span>
                 <span class="generation-cost">25 Credits per Generation</span>
+                <button id="buyCreditsBtn" class="buy-credits-btn">💳 Buy More Credits</button>
             </div>
         </div>
 
@@ -114,6 +116,26 @@
                 <div class="share-buttons">
                     <button class="share-btn twitter">🐦 Twitter</button>
                     <button class="share-btn reddit">🤖 Reddit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Credit Purchase Modal -->
+    <div id="creditModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🚀 Purchase Credits</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="credit-packages" id="creditPackages">
+                    <!-- Credit packages will be loaded here -->
+                </div>
+                <div class="payment-section" id="paymentSection" style="display: none;">
+                    <h3>💳 Payment</h3>
+                    <div id="card-element"></div>
+                    <button id="payButton" class="pay-button">Pay Now</button>
                 </div>
             </div>
         </div>

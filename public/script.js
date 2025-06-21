@@ -10,6 +10,12 @@ class MarsHabitatDesigner {
         // Generate or retrieve persistent user ID
         this.userId = this.getOrCreateUserId();
         
+        // Initialize Stripe
+        this.stripe = Stripe(process.env.STRIPE_PUBLISHABLE_KEY || 'pk_test_your_publishable_key');
+        this.elements = null;
+        this.cardElement = null;
+        this.selectedPackage = null;
+        
         this.initializeElements();
         this.setupEventListeners();
         this.setupSocketListeners();
@@ -41,6 +47,12 @@ class MarsHabitatDesigner {
             ambientMusic: document.getElementById('ambientMusic'),
             marsTemp: document.getElementById('marsTemp'),
             refreshWeather: document.getElementById('refreshWeather'),
+            buyCreditsBtn: document.getElementById('buyCreditsBtn'),
+            creditModal: document.getElementById('creditModal'),
+            creditPackages: document.getElementById('creditPackages'),
+            paymentSection: document.getElementById('paymentSection'),
+            payButton: document.getElementById('payButton'),
+            closeModal: document.querySelector('.close'),
         };
         // Start with music off and the correct icon
         this.elements.musicToggleBtn.textContent = '🔇';
@@ -50,6 +62,9 @@ class MarsHabitatDesigner {
         this.elements.generateButton.addEventListener('click', () => this.generateHabitat());
         this.elements.musicToggleBtn.addEventListener('click', () => this.toggleMusic());
         this.elements.refreshWeather.addEventListener('click', () => this.refreshMarsWeather());
+        this.elements.buyCreditsBtn.addEventListener('click', () => this.openCreditModal());
+        this.elements.closeModal.addEventListener('click', () => this.closeCreditModal());
+        this.elements.payButton.addEventListener('click', () => this.processPayment());
         
         // Use event delegation for dynamic buttons
         this.elements.resultsPanel.addEventListener('click', (e) => {
@@ -60,6 +75,13 @@ class MarsHabitatDesigner {
 
         // Handle music autoplay on first interaction
         document.body.addEventListener('click', () => this.handleFirstInteraction(), { once: true });
+        
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target === this.elements.creditModal) {
+                this.closeCreditModal();
+            }
+        });
     }
 
     setupSocketListeners() {
@@ -84,6 +106,11 @@ class MarsHabitatDesigner {
         this.socket.on('mars_weather', (data) => {
             console.log("Received Mars weather:", data);
             this.updateMarsWeather(data);
+        });
+        
+        this.socket.on('purchase_success', (data) => {
+            console.log("Purchase successful:", data);
+            this.showPurchaseSuccess(data);
         });
         
         // Fallback: if no credit update received after 2 seconds, send user_connect again
@@ -283,6 +310,131 @@ class MarsHabitatDesigner {
             
             console.log(`Updated Mars temperature: ${temp}°C (Sol ${sol})`);
         }
+    }
+
+    openCreditModal() {
+        this.elements.creditModal.style.display = 'block';
+        this.loadCreditPackages();
+    }
+
+    closeCreditModal() {
+        this.elements.creditModal.style.display = 'none';
+        this.elements.paymentSection.style.display = 'none';
+        this.selectedPackage = null;
+    }
+
+    async loadCreditPackages() {
+        try {
+            const response = await fetch('/api/credit-packages');
+            const packages = await response.json();
+            
+            this.elements.creditPackages.innerHTML = '';
+            Object.entries(packages).forEach(([id, pkg]) => {
+                const packageDiv = document.createElement('div');
+                packageDiv.className = 'credit-package';
+                packageDiv.dataset.packageId = id;
+                packageDiv.innerHTML = `
+                    <h3>${pkg.name}</h3>
+                    <div class="credits">${pkg.credits} Credits</div>
+                    <div class="price">$${(pkg.price / 100).toFixed(2)}</div>
+                    <div class="price-per-credit">$${(pkg.price / pkg.credits / 100).toFixed(2)} per credit</div>
+                `;
+                packageDiv.addEventListener('click', () => this.selectPackage(id, pkg));
+                this.elements.creditPackages.appendChild(packageDiv);
+            });
+        } catch (error) {
+            console.error('Error loading credit packages:', error);
+        }
+    }
+
+    selectPackage(packageId, package) {
+        // Remove previous selection
+        document.querySelectorAll('.credit-package').forEach(pkg => {
+            pkg.classList.remove('selected');
+        });
+        
+        // Select new package
+        document.querySelector(`[data-package-id="${packageId}"]`).classList.add('selected');
+        this.selectedPackage = { id: packageId, ...package };
+        
+        // Show payment section
+        this.elements.paymentSection.style.display = 'block';
+        this.setupStripeElements();
+    }
+
+    setupStripeElements() {
+        if (!this.elements) {
+            this.elements = this.stripe.elements();
+        }
+        
+        if (this.cardElement) {
+            this.cardElement.destroy();
+        }
+        
+        this.cardElement = this.elements.create('card', {
+            style: {
+                base: {
+                    color: '#E5E7EB',
+                    fontFamily: 'Rajdhani, sans-serif',
+                    fontSize: '16px',
+                    '::placeholder': {
+                        color: '#9CA3AF'
+                    }
+                }
+            }
+        });
+        
+        this.cardElement.mount('#card-element');
+    }
+
+    async processPayment() {
+        if (!this.selectedPackage) {
+            alert('Please select a credit package first.');
+            return;
+        }
+
+        this.elements.payButton.disabled = true;
+        this.elements.payButton.textContent = 'Processing...';
+
+        try {
+            // Create payment intent
+            const response = await fetch('/api/create-payment-intent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    packageId: this.selectedPackage.id,
+                    userId: this.userId
+                })
+            });
+
+            const { clientSecret } = await response.json();
+
+            // Confirm payment
+            const { error, paymentIntent } = await this.stripe.confirmCardPayment(clientSecret, {
+                payment_method: {
+                    card: this.cardElement,
+                }
+            });
+
+            if (error) {
+                throw new Error(error.message);
+            }
+
+            // Confirm payment with server
+            this.socket.emit('purchase_credits', { paymentIntentId: paymentIntent.id });
+
+        } catch (error) {
+            console.error('Payment error:', error);
+            alert(`Payment failed: ${error.message}`);
+        } finally {
+            this.elements.payButton.disabled = false;
+            this.elements.payButton.textContent = 'Pay Now';
+        }
+    }
+
+    showPurchaseSuccess(data) {
+        this.closeCreditModal();
+        alert(`🎉 Purchase successful! Added ${data.creditsAdded} credits to your account. New balance: ${data.newBalance} credits.`);
     }
 }
 

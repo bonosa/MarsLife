@@ -5,6 +5,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 require('dotenv').config();
 const OpenAI = require('openai');
 
@@ -27,6 +28,14 @@ const io = socketIo(server, {
 const CREDITS_FILE = path.join(__dirname, 'user_credits.json');
 const FREE_CREDITS = 100;
 const GENERATION_COST = 25;
+
+// Credit pricing tiers
+const CREDIT_PACKAGES = {
+    starter: { credits: 50, price: 299, name: "Starter Pack" },
+    explorer: { credits: 150, price: 799, name: "Explorer Pack" },
+    colonist: { credits: 500, price: 1999, name: "Colonist Pack" },
+    pioneer: { credits: 1200, price: 3999, name: "Pioneer Pack" }
+};
 
 // Load existing credits from file
 function loadCredits() {
@@ -102,6 +111,36 @@ io.on('connection', (socket) => {
   socket.on('get_mars_weather', async () => {
     const weather = await getMarsWeather();
     socket.emit('mars_weather', weather);
+  });
+
+  socket.on('purchase_credits', async (data) => {
+    if (!currentUserId) {
+        return socket.emit('error', { message: "User not identified." });
+    }
+    
+    try {
+        const { paymentIntentId } = data;
+        const response = await fetch(`${req.protocol}://${req.get('host')}/api/confirm-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentIntentId, userId: currentUserId })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            socket.emit('credit_update', { credits: result.newBalance });
+            socket.emit('purchase_success', { 
+                creditsAdded: result.creditsAdded,
+                newBalance: result.newBalance 
+            });
+        } else {
+            socket.emit('error', { message: 'Payment confirmation failed' });
+        }
+    } catch (error) {
+        console.error('Purchase error:', error);
+        socket.emit('error', { message: 'Purchase failed' });
+    }
   });
 
   socket.on('design_habitat', async (data) => {
@@ -250,3 +289,63 @@ async function getMarsWeather() {
         };
     }
 }
+
+// --- Credit Purchase API Endpoints ---
+app.get('/api/credit-packages', (req, res) => {
+    res.json(CREDIT_PACKAGES);
+});
+
+app.post('/api/create-payment-intent', async (req, res) => {
+    try {
+        const { packageId, userId } = req.body;
+        const package = CREDIT_PACKAGES[packageId];
+        
+        if (!package) {
+            return res.status(400).json({ error: 'Invalid package' });
+        }
+
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: package.price, // Amount in cents
+            currency: 'usd',
+            metadata: {
+                userId: userId,
+                packageId: packageId,
+                credits: package.credits
+            }
+        });
+
+        res.json({
+            clientSecret: paymentIntent.client_secret,
+            package: package
+        });
+    } catch (error) {
+        console.error('Payment intent error:', error);
+        res.status(500).json({ error: 'Payment failed' });
+    }
+});
+
+app.post('/api/confirm-payment', async (req, res) => {
+    try {
+        const { paymentIntentId, userId } = req.body;
+        
+        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+        
+        if (paymentIntent.status === 'succeeded') {
+            const credits = paymentIntent.metadata.credits;
+            const currentCredits = userCredits[userId] || 0;
+            userCredits[userId] = currentCredits + parseInt(credits);
+            saveCredits(userCredits);
+            
+            res.json({ 
+                success: true, 
+                newBalance: userCredits[userId],
+                creditsAdded: credits 
+            });
+        } else {
+            res.status(400).json({ error: 'Payment not completed' });
+        }
+    } catch (error) {
+        console.error('Payment confirmation error:', error);
+        res.status(500).json({ error: 'Payment confirmation failed' });
+    }
+});
