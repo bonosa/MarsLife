@@ -39,6 +39,8 @@ class MarsHabitatDesigner {
             creditCount: document.getElementById('creditCount'),
             musicToggleBtn: document.getElementById('musicToggleBtn'),
             ambientMusic: document.getElementById('ambientMusic'),
+            marsTemp: document.getElementById('marsTemp'),
+            refreshWeather: document.getElementById('refreshWeather'),
         };
         // Start with music off and the correct icon
         this.elements.musicToggleBtn.textContent = '🔇';
@@ -47,6 +49,7 @@ class MarsHabitatDesigner {
     setupEventListeners() {
         this.elements.generateButton.addEventListener('click', () => this.generateHabitat());
         this.elements.musicToggleBtn.addEventListener('click', () => this.toggleMusic());
+        this.elements.refreshWeather.addEventListener('click', () => this.refreshMarsWeather());
         
         // Use event delegation for dynamic buttons
         this.elements.resultsPanel.addEventListener('click', (e) => {
@@ -62,15 +65,34 @@ class MarsHabitatDesigner {
     setupSocketListeners() {
         this.socket.on('connect', () => {
             console.log("Socket connected! Requesting initial data.");
+            console.log("Sending user ID:", this.userId);
             // Send user ID to server for credit tracking
             this.socket.emit('user_connect', { userId: this.userId });
             this.loadTemplates();
+            // Request initial Mars weather data
+            this.refreshMarsWeather();
         });
 
         this.socket.on('habitat_design', (data) => this.displayHabitat(data));
         this.socket.on('templates_data', (data) => this.renderTemplates(data));
         this.socket.on('error', (data) => this.showError(data.message));
-        this.socket.on('credit_update', (data) => this.updateCredits(data.credits));
+        this.socket.on('credit_update', (data) => {
+            console.log("Received credit update:", data);
+            this.updateCredits(data.credits);
+        });
+        
+        this.socket.on('mars_weather', (data) => {
+            console.log("Received Mars weather:", data);
+            this.updateMarsWeather(data);
+        });
+        
+        // Fallback: if no credit update received after 2 seconds, send user_connect again
+        setTimeout(() => {
+            if (this.elements.creditCount.textContent === '100') {
+                console.log("Fallback: Sending user_connect again");
+                this.socket.emit('user_connect', { userId: this.userId });
+            }
+        }, 2000);
     }
 
     loadTemplates() {
@@ -227,6 +249,39 @@ class MarsHabitatDesigner {
         } else {
             this.elements.ambientMusic.pause();
             this.elements.musicToggleBtn.textContent = '🔇';
+        }
+    }
+
+    refreshMarsWeather() {
+        console.log("Requesting Mars weather data...");
+        this.elements.refreshWeather.style.transform = 'rotate(360deg)';
+        this.socket.emit('get_mars_weather');
+        
+        // Reset rotation after animation
+        setTimeout(() => {
+            this.elements.refreshWeather.style.transform = 'rotate(0deg)';
+        }, 500);
+    }
+
+    updateMarsWeather(data) {
+        if (data && data.temperature !== undefined) {
+            const temp = data.temperature;
+            const sol = data.sol || 'Unknown';
+            const source = data.source || 'NASA';
+            
+            this.elements.marsTemp.textContent = `${temp}°C`;
+            this.elements.marsTemp.title = `Sol ${sol} | Source: ${source}`;
+            
+            // Add visual feedback for temperature
+            if (temp > -20) {
+                this.elements.marsTemp.style.color = '#F59E0B'; // Warmer - orange
+            } else if (temp < -80) {
+                this.elements.marsTemp.style.color = '#3B82F6'; // Colder - blue
+            } else {
+                this.elements.marsTemp.style.color = '#38BDF8'; // Normal - light blue
+            }
+            
+            console.log(`Updated Mars temperature: ${temp}°C (Sol ${sol})`);
         }
     }
 }

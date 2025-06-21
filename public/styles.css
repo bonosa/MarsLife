@@ -41,6 +41,59 @@ body {
     color: #9CA3AF; /* Medium gray */
 }
 
+/* Mars Stats */
+.mars-stats {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    position: relative;
+}
+
+.stat-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #38BDF8;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #9CA3AF;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.refresh-btn {
+    background: rgba(56, 189, 248, 0.1);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+    position: absolute;
+    top: -5px;
+    right: -15px;
+}
+
+.refresh-btn:hover {
+    background: rgba(56, 189, 248, 0.2);
+    transform: rotate(180deg);
+}
+
+.refresh-btn:active {
+    transform: rotate(360deg);
+}
+
 /* Credit Balance */
 .credit-balance-container {
     display: flex;

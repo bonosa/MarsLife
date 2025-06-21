@@ -4,6 +4,7 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios');
 require('dotenv').config();
 const OpenAI = require('openai');
 
@@ -81,11 +82,15 @@ io.on('connection', (socket) => {
   socket.on('user_connect', (data) => {
     currentUserId = data.userId;
     console.log(`User connected with ID: ${currentUserId}`);
+    console.log(`Current credits for user: ${userCredits[currentUserId] || 'not found'}`);
     
     // Initialize credits for new user or get existing credits
     if (!userCredits[currentUserId]) {
+        console.log(`New user, setting credits to ${FREE_CREDITS}`);
         userCredits[currentUserId] = FREE_CREDITS;
         saveCredits(userCredits);
+    } else {
+        console.log(`Existing user, credits: ${userCredits[currentUserId]}`);
     }
     socket.emit('credit_update', { credits: userCredits[currentUserId] });
   });
@@ -94,12 +99,19 @@ io.on('connection', (socket) => {
     socket.emit('templates_data', habitatTemplates);
   });
 
+  socket.on('get_mars_weather', async () => {
+    const weather = await getMarsWeather();
+    socket.emit('mars_weather', weather);
+  });
+
   socket.on('design_habitat', async (data) => {
     if (!currentUserId) {
         return socket.emit('error', { message: "User not identified." });
     }
     
     const currentCredits = userCredits[currentUserId] || 0;
+    console.log(`Design request - User: ${currentUserId}, Current credits: ${currentCredits}`);
+    
     if (currentCredits < GENERATION_COST) {
         return socket.emit('error', { message: "Insufficient credits." });
     }
@@ -112,6 +124,7 @@ io.on('connection', (socket) => {
       habitatDesign.imageUrl = imageUrl;
 
       const newCredits = currentCredits - GENERATION_COST;
+      console.log(`Deducting ${GENERATION_COST} credits. New balance: ${newCredits}`);
       userCredits[currentUserId] = newCredits;
       saveCredits(userCredits);
       socket.emit('credit_update', { credits: newCredits });
@@ -191,3 +204,49 @@ const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`🚀 Mars Habitat Designer is running on http://localhost:${PORT}`);
 });
+
+// --- Mars Weather API ---
+async function getMarsWeather() {
+    try {
+        // NASA's InSight Mars Weather API
+        const response = await axios.get('https://api.nasa.gov/insight_weather/', {
+            params: {
+                api_key: process.env.NASA_API_KEY || 'DEMO_KEY',
+                feedtype: 'json',
+                ver: '1.0'
+            },
+            timeout: 10000
+        });
+        
+        if (response.data && response.data.sol_keys && response.data.sol_keys.length > 0) {
+            const latestSol = response.data.sol_keys[response.data.sol_keys.length - 1];
+            const latestData = response.data[latestSol];
+            
+            if (latestData && latestData.AT) {
+                const temp = latestData.AT.av || latestData.AT.mn || -63;
+                return {
+                    temperature: Math.round(temp),
+                    sol: latestSol,
+                    timestamp: new Date().toISOString(),
+                    source: 'NASA InSight'
+                };
+            }
+        }
+        
+        // Fallback to average Mars temperature if API fails
+        return {
+            temperature: -63,
+            sol: 'Unknown',
+            timestamp: new Date().toISOString(),
+            source: 'Average (API unavailable)'
+        };
+    } catch (error) {
+        console.error('Error fetching Mars weather:', error.message);
+        return {
+            temperature: -63,
+            sol: 'Unknown',
+            timestamp: new Date().toISOString(),
+            source: 'Average (API error)'
+        };
+    }
+}

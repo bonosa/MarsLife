@@ -2,3 +2,4 @@
 .env
 env.example
 user_credits.json
+node_modules
