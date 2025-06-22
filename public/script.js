@@ -10,8 +10,9 @@ class MarsHabitatDesigner {
         // Generate or retrieve persistent user ID
         this.userId = this.getOrCreateUserId();
         
-        // Initialize Stripe
-        this.stripe = Stripe(process.env.STRIPE_PUBLISHABLE_KEY || 'pk_test_your_publishable_key');
+        // Initialize Stripe - THIS IS THE FIX
+        // NOTE: Replace this with your actual Stripe Publishable Key
+        this.stripe = Stripe('pk_test_your_stripe_publishable_key_here'); 
         this.elements = null;
         this.cardElement = null;
         this.selectedPackage = null;
@@ -89,7 +90,6 @@ class MarsHabitatDesigner {
     setupSocketListeners() {
         this.socket.on('connect', () => {
             console.log("Socket connected! Requesting initial data.");
-            console.log("Sending user ID:", this.userId);
             // Send user ID to server for credit tracking
             this.socket.emit('user_connect', { userId: this.userId });
             this.loadTemplates();
@@ -114,14 +114,6 @@ class MarsHabitatDesigner {
             console.log("Purchase successful:", data);
             this.showPurchaseSuccess(data);
         });
-        
-        // Fallback: if no credit update received after 2 seconds, send user_connect again
-        setTimeout(() => {
-            if (this.elements.creditCount.textContent === '100') {
-                console.log("Fallback: Sending user_connect again");
-                this.socket.emit('user_connect', { userId: this.userId });
-            }
-        }, 2000);
         
         // Additional fallback: if templates don't load after 3 seconds, try again
         setTimeout(() => {
@@ -370,15 +362,15 @@ class MarsHabitatDesigner {
         }
     }
 
-    selectPackage(packageId, package) {
+    selectPackage(packageId, pkg) {
         // Remove previous selection
-        document.querySelectorAll('.credit-package').forEach(pkg => {
-            pkg.classList.remove('selected');
+        document.querySelectorAll('.credit-package').forEach(p => {
+            p.classList.remove('selected');
         });
         
         // Select new package
         document.querySelector(`[data-package-id="${packageId}"]`).classList.add('selected');
-        this.selectedPackage = { id: packageId, ...package };
+        this.selectedPackage = { id: packageId, ...pkg };
         
         // Show payment section
         this.elements.paymentSection.style.display = 'block';
