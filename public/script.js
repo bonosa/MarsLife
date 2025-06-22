@@ -3,8 +3,6 @@ class MarsHabitatDesigner {
     constructor() {
         this.socket = io();
         this.selectedTemplate = "The Martian Dome";
-        this.maxGenerations = 4;
-        this.generationCount = parseInt(localStorage.getItem('marslifeGenerationCount') || '0');
         this.currentDesign = null;
         
         // Generate or retrieve persistent user ID
@@ -20,7 +18,6 @@ class MarsHabitatDesigner {
         this.initializeElements();
         this.setupEventListeners();
         this.setupSocketListeners();
-        this.updateGenerationUI();
     }
 
     getOrCreateUserId() {
@@ -193,18 +190,13 @@ class MarsHabitatDesigner {
         this.updateVisualization(data.design.imageUrl);
         this.updateSpecifications(data.design);
         this.elements.resultsPanel.classList.add('show');
-
-        // Increment count after successful generation
-        this.generationCount++;
-        localStorage.setItem('marslifeGenerationCount', this.generationCount);
-        this.updateGenerationUI();
     }
 
     updateVisualization(imageUrl) {
         this.elements.habitatImage.src = imageUrl;
         this.elements.imageContainer.classList.remove('is-loading');
         this.elements.loadingMessage.textContent = 'Welcome to Mars Life';
-        this.updateGenerationUI(); // Re-enable button if limit not reached
+        // The button state will be updated by the 'credit_update' event from the server
     }
 
     updateSpecifications(design) {
@@ -234,7 +226,9 @@ class MarsHabitatDesigner {
     showError(message) {
         this.elements.imageContainer.classList.remove('is-loading');
         this.elements.loadingMessage.textContent = 'Welcome to Mars Life';
-        this.updateGenerationUI(); // Re-enable button if limit not reached
+        // Re-enable button on error, as credits were not deducted.
+        this.elements.generateButton.disabled = false;
+        this.elements.generateButton.textContent = '🚀 Generate Mars Habitat';
         alert(`Error: ${message}`);
     }
 
@@ -248,8 +242,11 @@ class MarsHabitatDesigner {
         const url = encodeURIComponent(window.location.href);
         let shareUrl = '';
         
-        if (action === 'twitter') {
-            shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`;
+        if (action === 'x') {
+            shareUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`;
+        } else if (action === 'tiktok') {
+            // TikTok web share
+            shareUrl = `https://www.tiktok.com/share?url=${url}&title=${encodeURIComponent(text)}`;
         } else if (action === 'reddit') {
             shareUrl = `https://reddit.com/submit?url=${url}&title=${encodeURIComponent("I designed my Mars Habitat with AI!")}`;
         }
@@ -265,16 +262,6 @@ class MarsHabitatDesigner {
         const hasEnoughCredits = credits >= 25; // GENERATION_COST
         this.elements.generateButton.disabled = !hasEnoughCredits;
         this.elements.generateButton.textContent = hasEnoughCredits ? '🚀 Generate Mars Habitat' : 'Insufficient Credits';
-    }
-    
-    updateGenerationUI() {
-        if (this.generationCount >= this.maxGenerations) {
-            this.elements.generateButton.disabled = true;
-            this.elements.generateButton.textContent = 'Generation Limit Reached';
-        } else {
-            this.elements.generateButton.disabled = false;
-            this.elements.generateButton.textContent = '🚀 Generate Mars Habitat';
-        }
     }
 
     handleFirstInteraction() {
