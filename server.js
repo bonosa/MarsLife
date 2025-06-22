@@ -81,6 +81,30 @@ const marsEnvironment = {
     radiation: "High"
 };
 
+// --- Wild Prompt Twists for Image Diversity ---
+const PROMPT_TWISTS = [
+  "at sunset with dramatic shadows",
+  "during a Martian dust storm, swirling red clouds",
+  "with a glowing blue aurora in the sky",
+  "with a futuristic Mars rover parked outside",
+  "with a group of astronauts in colorful suits",
+  "in a cyberpunk art style, neon accents",
+  "with bioluminescent plants around the habitat",
+  "with a transparent dome showing lush green gardens inside",
+  "with a rocket launching in the background",
+  "with a giant Mars mountain in the distance",
+  "with a surreal, dreamlike atmosphere",
+  "with dramatic cinematic lighting, lens flare",
+  "in the style of a 1980s sci-fi movie poster",
+  "with a massive solar farm nearby",
+  "with a Martian pet (alien creature) outside",
+  "with a holographic sign above the entrance",
+  "with a meteor shower in the sky",
+  "with a red-blue color palette, high contrast",
+  "with a whimsical, cartoonish look",
+  "with a panoramic view of Valles Marineris canyon"
+];
+
 // --- Socket.IO Logic ---
 io.on('connection', (socket) => {
   console.log('A Mars colonist has connected.');
@@ -211,14 +235,11 @@ function generateHabitatDesign(preferences) {
 async function generateHabitatVisual(preferences) {
   const { style, capacity, budget } = preferences;
   const template = habitatTemplates.find(t => t.name === style) || {};
-  const prompt = `
-    Create a photorealistic, cinematic concept art of a Mars habitat.
-    Style: ${style}, matching the concept of "${template.description}".
-    It is designed for a capacity of ${capacity} and a ${budget}.
-    The scene must be set on the Martian landscape: a rocky, desolate, red-orange desert under a thin, dusty pink sky.
-    The visual should be awe-inspiring, rugged, and futuristic.
-    If the style is "Underground Bunker" or "Lava Tube Home", show a cutaway view revealing the subterranean living quarters, with only an entrance visible on the surface.
-  `;
+  // Pick a random twist for this generation
+  const twist = PROMPT_TWISTS[Math.floor(Math.random() * PROMPT_TWISTS.length)];
+  // Optionally, add a random number for even more uniqueness
+  const uniqueTag = `UniqueID:${Math.floor(Math.random() * 1000000)}`;
+  const prompt = `\n    Create a photorealistic, cinematic concept art of a Mars habitat.\n    Style: ${style}, matching the concept of \"${template.description}\".\n    It is designed for a capacity of ${capacity} and a ${budget}.\n    The scene must be set on the Martian landscape: a rocky, desolate, red-orange desert under a thin, dusty pink sky.\n    The visual should be awe-inspiring, rugged, and futuristic.\n    If the style is \"Underground Bunker\" or \"Lava Tube Home\", show a cutaway view revealing the subterranean living quarters, with only an entrance visible on the surface.\n    Add this twist: ${twist}.\n    ${uniqueTag}\n  `;
   try {
     const response = await openai.images.generate({
       model: "dall-e-3",

@@ -22,6 +22,7 @@ class MarsHabitatDesigner {
 
     getOrCreateUserId() {
         let userId = localStorage.getItem('marslifeUserId');
+        console.log("userid******************",userId);
         if (!userId) {
             userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             localStorage.setItem('marslifeUserId', userId);
