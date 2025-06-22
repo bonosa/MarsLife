@@ -105,6 +105,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('get_templates', () => {
+    console.log('Templates requested, sending:', habitatTemplates);
     socket.emit('templates_data', habitatTemplates);
   });
 
@@ -233,66 +234,14 @@ async function generateHabitatVisual(preferences) {
   }
 }
 
-// --- Catch-all route to serve index.html ---
-app.get('*', (req, res) => {
-    res.sendFile(path.join(publicPath, 'index.html'));
-});
-
-// --- Server Startup ---
-const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log(`🚀 Mars Habitat Designer is running on http://localhost:${PORT}`);
-});
-
-// --- Mars Weather API ---
-async function getMarsWeather() {
-    try {
-        // NASA's InSight Mars Weather API
-        const response = await axios.get('https://api.nasa.gov/insight_weather/', {
-            params: {
-                api_key: process.env.NASA_API_KEY || 'DEMO_KEY',
-                feedtype: 'json',
-                ver: '1.0'
-            },
-            timeout: 10000
-        });
-        
-        if (response.data && response.data.sol_keys && response.data.sol_keys.length > 0) {
-            const latestSol = response.data.sol_keys[response.data.sol_keys.length - 1];
-            const latestData = response.data[latestSol];
-            
-            if (latestData && latestData.AT) {
-                const temp = latestData.AT.av || latestData.AT.mn || -63;
-                return {
-                    temperature: Math.round(temp),
-                    sol: latestSol,
-                    timestamp: new Date().toISOString(),
-                    source: 'NASA InSight'
-                };
-            }
-        }
-        
-        // Fallback to average Mars temperature if API fails
-        return {
-            temperature: -63,
-            sol: 'Unknown',
-            timestamp: new Date().toISOString(),
-            source: 'Average (API unavailable)'
-        };
-    } catch (error) {
-        console.error('Error fetching Mars weather:', error.message);
-        return {
-            temperature: -63,
-            sol: 'Unknown',
-            timestamp: new Date().toISOString(),
-            source: 'Average (API error)'
-        };
-    }
-}
-
 // --- Credit Purchase API Endpoints ---
 app.get('/api/credit-packages', (req, res) => {
     res.json(CREDIT_PACKAGES);
+});
+
+app.get('/api/templates', (req, res) => {
+    console.log('REST API: Templates requested');
+    res.json(habitatTemplates);
 });
 
 app.post('/api/create-payment-intent', async (req, res) => {
@@ -349,3 +298,60 @@ app.post('/api/confirm-payment', async (req, res) => {
         res.status(500).json({ error: 'Payment confirmation failed' });
     }
 });
+
+// --- Catch-all route to serve index.html ---
+app.get('*', (req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
+});
+
+// --- Server Startup ---
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, () => {
+  console.log(`🚀 Mars Habitat Designer is running on http://localhost:${PORT}`);
+});
+
+// --- Mars Weather API ---
+async function getMarsWeather() {
+    try {
+        // NASA's InSight Mars Weather API
+        const response = await axios.get('https://api.nasa.gov/insight_weather/', {
+            params: {
+                api_key: process.env.NASA_API_KEY || 'DEMO_KEY',
+                feedtype: 'json',
+                ver: '1.0'
+            },
+            timeout: 10000
+        });
+        
+        if (response.data && response.data.sol_keys && response.data.sol_keys.length > 0) {
+            const latestSol = response.data.sol_keys[response.data.sol_keys.length - 1];
+            const latestData = response.data[latestSol];
+            
+            if (latestData && latestData.AT) {
+                const temp = latestData.AT.av || latestData.AT.mn || -63;
+                return {
+                    temperature: Math.round(temp),
+                    sol: latestSol,
+                    timestamp: new Date().toISOString(),
+                    source: 'NASA InSight'
+                };
+            }
+        }
+        
+        // Fallback to average Mars temperature if API fails
+        return {
+            temperature: -63,
+            sol: 'Unknown',
+            timestamp: new Date().toISOString(),
+            source: 'Average (API unavailable)'
+        };
+    } catch (error) {
+        console.error('Error fetching Mars weather:', error.message);
+        return {
+            temperature: -63,
+            sol: 'Unknown',
+            timestamp: new Date().toISOString(),
+            source: 'Average (API error)'
+        };
+    }
+}
